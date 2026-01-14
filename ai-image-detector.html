@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Detector</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            background: #e8e9ff;
+        }
+
+        #fileInput { display: none; }
+
+        .preview-container,
+        .result-container,
+        .loading,
+        .error {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .preview-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        .percentage-display {
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .reset-btn {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔍 AI Image Detector</h1>
+
+    <div class="upload-area" id="uploadArea">
+        <p>📁 Click or drag & drop an image</p>
+        <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div class="preview-container" id="previewContainer">
+        <img id="previewImage" class="preview-image">
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Analyzing image…</p>
+    </div>
+
+    <div class="result-container" id="resultContainer">
+        <div class="percentage-display" id="percentageDisplay">0%</div>
+        <p style="text-align:center;">Chance the image is AI-generated</p>
+        <button class="reset-btn" onclick="resetDetector()">Analyze Another</button>
+    </div>
+
+    <div class="error" id="error"></div>
+</div>
+
+<script>
+    // 🔐 Hardcoded API credentials
+    const API_USER = '801829571';
+    const API_SECRET = 'wd5jfWGSX3Em6sdkFwoNR2TNG6hj4ku3';
+
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImage = document.getElementById('previewImage');
+    const loading = document.getElementById('loading');
+    const resultContainer = document.getElementById('resultContainer');
+    const percentageDisplay = document.getElementById('percentageDisplay');
+    const errorDiv = document.getElementById('error');
+
+    uploadArea.onclick = () => fileInput.click();
+
+    uploadArea.ondragover = e => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    };
+
+    uploadArea.ondragleave = () => uploadArea.classList.remove('dragover');
+
+    uploadArea.ondrop = e => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFile(file);
+    };
+
+    fileInput.onchange = e => handleFile(e.target.files[0]);
+
+    function handleFile(file) {
+        errorDiv.style.display = 'none';
+        resultContainer.style.display = 'none';
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            previewImage.src = e.target.result;
+            previewContainer.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        analyzeImage(file);
+    }
+
+    async function analyzeImage(file) {
+        loading.style.display = 'block';
+
+        const formData = new FormData();
+        formData.append('media', file);
+        formData.append('models', 'genai');
+        formData.append('api_user', '801829571');
+        formData.append('api_secret', 'wd5jfWGSX3Em6sdkFwoNR2TNG6hj4ku3');
+
+        try {
+            const res = await fetch('https://api.sightengine.com/1.0/check.json', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+            loading.style.display = 'none';
+
+            if (data.status === 'success') {
+                const pct = (data.type.ai_generated * 100).toFixed(1);
+                percentageDisplay.textContent = pct + '%';
+                resultContainer.style.display = 'block';
+            } else {
+                showError(data.error?.message || 'API error');
+            }
+        } catch (err) {
+            loading.style.display = 'none';
+            showError(err.message);
+        }
+    }
+
+    function showError(msg) {
+        errorDiv.textContent = msg;
+        errorDiv.style.display = 'block';
+    }
+
+    function resetDetector() {
+        previewContainer.style.display = 'none';
+        resultContainer.style.display = 'none';
+        fileInput.value = '';
+    }
+</script>
+
+</body>
+</html>
