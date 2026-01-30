@@ -61,8 +61,8 @@
             border-radius: 10px;
         }
 
-        .percentage-display {
-            font-size: 48px;
+        .result-text {
+            font-size: 40px;
             font-weight: bold;
             text-align: center;
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -119,12 +119,11 @@
 
     <div class="loading" id="loading">
         <div class="spinner"></div>
-        <p>Analyzing image…</p>
+        <p style="text-align:center;">Analyzing image…</p>
     </div>
 
     <div class="result-container" id="resultContainer">
-        <div class="percentage-display" id="percentageDisplay">0%</div>
-        <p style="text-align:center;">Chance the image is AI-generated</p>
+        <div class="result-text" id="resultText">Result</div>
         <button class="reset-btn" onclick="resetDetector()">Analyze Another</button>
     </div>
 
@@ -142,7 +141,7 @@
     const previewImage = document.getElementById('previewImage');
     const loading = document.getElementById('loading');
     const resultContainer = document.getElementById('resultContainer');
-    const percentageDisplay = document.getElementById('percentageDisplay');
+    const resultText = document.getElementById('resultText');
     const errorDiv = document.getElementById('error');
 
     uploadArea.onclick = () => fileInput.click();
@@ -183,8 +182,8 @@
         const formData = new FormData();
         formData.append('media', file);
         formData.append('models', 'genai');
-        formData.append('api_user', '801829571');
-        formData.append('api_secret', 'wd5jfWGSX3Em6sdkFwoNR2TNG6hj4ku3');
+        formData.append('api_user', API_USER);
+        formData.append('api_secret', API_SECRET);
 
         try {
             const res = await fetch('https://api.sightengine.com/1.0/check.json', {
@@ -196,8 +195,14 @@
             loading.style.display = 'none';
 
             if (data.status === 'success') {
-                const pct = (data.type.ai_generated * 100).toFixed(1);
-                percentageDisplay.textContent = pct + '%';
+                const aiScore = data.type.ai_generated * 100;
+
+                if (aiScore > 1) {
+                    resultText.textContent = 'AI Generated';
+                } else {
+                    resultText.textContent = 'Not AI Generated';
+                }
+
                 resultContainer.style.display = 'block';
             } else {
                 showError(data.error?.message || 'API error');
